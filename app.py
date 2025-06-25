@@ -3,26 +3,30 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables (will use GitHub secrets in production)
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configure your Gemini API key
-api_key = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
+# Configure your Gemini API key from environment variables
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("Warning: GEMINI_API_KEY not found in environment variables")
+    print("Make sure to set it in your deployment platform's environment variables")
+    api_key = "NOT_SET"
+
 genai.configure(api_key=api_key)
 
 # Load Gemini model
+model = None
 try:
-    # First, let's list available models
-    print("Available models:")
-    for m in genai.list_models():
-        print(f"  - {m.name}")
-
-    # Try the correct model name
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    print("Successfully loaded gemini-1.5-flash model")
+    if api_key != "NOT_SET":
+        # Try the correct model name
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        print("Successfully loaded gemini-1.5-flash model")
+    else:
+        print("API key not set - model will not be available")
 except Exception as e:
     print(f"Error loading gemini-1.5-flash model: {e}")
     try:
@@ -77,10 +81,12 @@ def ask_icms():
             return jsonify({"error": "No question provided"}), 400
 
         # Check if API key is configured
-        if api_key == "YOUR_GEMINI_API_KEY":
+        if not api_key or api_key == "NOT_SET":
             return (
                 jsonify(
-                    {"error": "Please configure your Gemini API key in the .env file"}
+                    {
+                        "error": "GEMINI_API_KEY not configured. Please set it in environment variables."
+                    }
                 ),
                 500,
             )
